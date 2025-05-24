@@ -1,0 +1,137 @@
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.Period;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+class Ucak {
+    String model, marka, seriNo;
+    int koltukKapasitesi;
+    boolean aktif;
+
+    public Ucak(String model, String marka, String seriNo, int koltukKapasitesi, boolean aktif) {
+        this.model = model; this.marka = marka; this.seriNo = seriNo;
+        this.koltukKapasitesi = koltukKapasitesi; this.aktif = aktif;
+    }
+    @Override public String toString() {
+        return String.format("%s %s (SN:%s) - Kapasite:%d %s",
+                marka, model, seriNo, koltukKapasitesi, aktif?"(Aktif)":"(Pasif)");
+    }
+}
+
+class Lokasyon {
+    String ulke, sehir, havaalani;
+    boolean aktif;
+    public Lokasyon(String ulke, String sehir, String havaalani, boolean aktif) {
+        this.ulke=ulke; this.sehir=sehir; this.havaalani=havaalani; this.aktif=aktif;
+    }
+    @Override public String toString() {
+        return String.format("%s (%s, %s) %s",
+                havaalani, sehir, ulke, aktif?"Aktif":"Pasif");
+    }
+}
+
+class Ucus {
+    String id; Lokasyon kalkis, varis; LocalDateTime tarihSaat; Ucak ucak; double temelFiyat; int dolu;
+    public Ucus(String id, Lokasyon k, Lokasyon v, LocalDateTime t, Ucak u, double f) {
+        this.id=id; kalkis=k; varis=v; tarihSaat=t; ucak=u; temelFiyat=f; dolu=0;
+    }
+    public boolean bosMu(int adet) { return dolu+adet<=ucak.koltukKapasitesi; }
+    public void yerAyir(int adet) { dolu+=adet; }
+    @Override public String toString() {
+        return String.format("%s: %s->%s %s Fiyat:%.2f TL Boş:%d",
+                id, kalkis, varis, tarihSaat, temelFiyat, ucak.koltukKapasitesi-dolu);
+    }
+}
+
+class Rezervasyon {
+    String no; Ucus ucus; String ad, soyad, cinsiyet; int yas; double odeme;
+    public Rezervasyon(String no, Ucus u, String ad, String soyad, int yas, double odeme, String cinsiyet) {
+        this.no=no; this.ucus=u; this.ad=ad; this.soyad=soyad; this.yas=yas;
+        this.odeme=odeme; this.cinsiyet=cinsiyet;
+    }
+    @Override public String toString() {
+        return String.format("%s: %s %s (%d yaşında, %s) Uçuş:%s Ödeme:%.2f TL",
+                no, ad, soyad, yas, cinsiyet, ucus.id, odeme);
+    }
+}
+
+public class UcakRezervasyonSistemi {
+    static List<Ucak> ucaklar=new ArrayList<>();
+    static List<Lokasyon> lokasyonlar=new ArrayList<>();
+    static List<Ucus> ucuslar=new ArrayList<>();
+    static List<Rezervasyon> rezervasyonlar=new ArrayList<>();
+    static Scanner sc=new Scanner(System.in);
+    static DateTimeFormatter dtf = DateTimeFormatter.ofPattern("dd-MM-yyyy");
+
+    public static void main(String[] args){
+        veriHazirla(); menu();
+    }
+
+    static void veriHazirla(){
+        ucaklar.add(new Ucak("E195-E2","Embraer","EM1001",132,true));
+        ucaklar.add(new Ucak("CS300","Bombardier","BD2002",145,true));
+
+        lokasyonlar.add(new Lokasyon("Fransa","Paris","CDG",true));
+        lokasyonlar.add(new Lokasyon("İtalya","Roma","FCO",true));
+        lokasyonlar.add(new Lokasyon("İspanya","Madrid","MAD",true));
+        lokasyonlar.add(new Lokasyon("Türkiye","İzmir","ADB",true));
+
+        LocalDateTime base=LocalDateTime.now().plusDays(2);
+        Random r=new Random();
+
+        for(int i=1;i<=15;i++){
+            Lokasyon kalkis = lokasyonlar.get(r.nextInt(lokasyonlar.size()));
+            Lokasyon varis;
+            do {
+                varis = lokasyonlar.get(r.nextInt(lokasyonlar.size()));
+            } while (varis == kalkis);
+
+            Ucak seciliUcak = ucaklar.get(r.nextInt(ucaklar.size()));
+            double fiyat = 300 + r.nextInt(700);
+            ucuslar.add(new Ucus("FL"+i, kalkis, varis, base.plusHours(i*2), seciliUcak, fiyat));
+        }
+    }
+
+    static void menu(){
+        while(true){
+            System.out.println("\n1- Uçuşları Listele\n2- Rezervasyon Yap\n3- Rezervasyonları Görüntüle\n0- Çıkış");
+            System.out.print("Seçim: "); String sec=sc.nextLine();
+            switch(sec){
+                case "1": ucuslar.forEach(System.out::println); break;
+                case "2": rezervasyonYap(); break;
+                case "3": rezervasyonlar.forEach(System.out::println); break;
+                case "0": return;
+                default: System.out.println("Geçersiz seçim!");
+            }
+        }
+    }
+
+    static void rezervasyonYap(){
+        System.out.print("Kaç bilet almak istiyorsunuz? ");
+        int adet=Integer.parseInt(sc.nextLine());
+        System.out.print("Uçuş ID: "); String id=sc.nextLine();
+        Ucus sec=ucuslar.stream().filter(u->u.id.equalsIgnoreCase(id)).findFirst().orElse(null);
+        if(sec==null || !sec.bosMu(adet)){
+            System.out.println("Müsait değil veya uçuş bulunamadı."); return;
+        }
+        sec.yerAyir(adet);
+        double toplam=0;
+        for(int i=1;i<=adet;i++){
+            System.out.println(i+". yolcu:");
+            System.out.print("  Ad: "); String ad=sc.nextLine();
+            System.out.print("  Soyad: "); String soy=sc.nextLine();
+            System.out.print("  Cinsiyet: "); String cinsiyet = sc.nextLine();
+            System.out.print("  Doğum tarihi (GG-AA-YYYY): ");
+            String tarihGiris = sc.nextLine();
+            LocalDate dogum = LocalDate.parse(tarihGiris, dtf);
+            int yas=Period.between(dogum, sec.tarihSaat.toLocalDate()).getYears();
+            double ucret = sec.temelFiyat;
+            if(yas >= 2 && yas < 12){ ucret *= 0.5; }
+            String no = "RZ" + (rezervasyonlar.size()+1);
+            rezervasyonlar.add(new Rezervasyon(no, sec, ad, soy, yas, ucret, cinsiyet));
+            toplam += ucret;
+        }
+        System.out.printf("Toplam ödeme: %.2f TL%n", toplam);
+    }
+}
