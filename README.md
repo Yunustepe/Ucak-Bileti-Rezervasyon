@@ -1,4 +1,3 @@
-# Ucak-Bileti-Rezervasyon
 
 # Uçak Bilet Rezervasyon Sistemi – Java OOP Console Application
 
